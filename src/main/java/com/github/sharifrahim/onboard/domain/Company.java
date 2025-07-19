@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,7 +28,63 @@ public class Company {
 
     private String name;
 
+    private String registrationNumber;
+
+    private String entityType;
+
+    private String industrySector;
+
+    private LocalDate dateOfIncorporation;
+
+    private String registeredAddress;
+
+    private String operatingAddress;
+
+    private String country;
+
+    private String companySize;
+
     @Lob
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+    private String mainContactName;
+
+    private String mainContactEmail;
+
+    private String mainContactPhone;
+
+    private String contactPersonRole;
+
+    private String secondaryContactName;
+
+    private String technicalContactEmail;
+
+    private String billingContactEmail;
+
+    private String authorizedPersons;
+
+    private String emergencyContactNumber;
+
+    private String preferredLanguage;
+
+    private String taxIdNumber;
+
+    private String bankName;
+
+    private String bankAccountNumber;
+
+    private String preferredPaymentMethod;
+
+    private String roleOnPlatform;
+
+    private String requestedFeatures;
+
+    private String operatingHours;
+
+    private Boolean hasComplianceCertification;
+
+    private Boolean agreedToTermsOfService;
+
+    private LocalDate agreedOnboardingDate;
 }
