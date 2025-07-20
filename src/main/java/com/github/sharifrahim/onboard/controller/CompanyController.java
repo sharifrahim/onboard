@@ -134,6 +134,31 @@ public class CompanyController {
         return ResponseEntity.ok(company);
     }
 
+    @PostMapping("/approvals/{id}/approve")
+    public ResponseEntity<Void> approve(@PathVariable Long id) {
+        Optional<Approval> optional = approvalService.findById(id);
+        if (optional.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        Approval approval = optional.get();
+        Company company = fromJson(approval.getNewData());
+
+        if (approval.getOperationType() == OperationType.NEW) {
+            Company savedCompany = companyRepository.save(company);
+            approval.setDataId(savedCompany.getId());
+        } else if (approval.getOperationType() == OperationType.UPDATE) {
+            company.setId(approval.getDataId());
+            companyRepository.save(company);
+        }
+
+        approval.setApprovalStatus(ApprovalStatus.APPROVED);
+        approval.setApprovedBy("system");
+        approval.setApprovedAt(LocalDateTime.now());
+        approvalService.save(approval);
+
+        return ResponseEntity.ok().build();
+    }
+
     private String toJson(Object object) {
         try {
             return objectMapper.writeValueAsString(object);
