@@ -1,6 +1,7 @@
 package com.github.sharifrahim.onboard.controller;
 
 import jakarta.validation.Valid;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
@@ -12,11 +13,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.sharifrahim.onboard.domain.Approval;
+import com.github.sharifrahim.onboard.domain.Approval.ApprovalStatus;
+import com.github.sharifrahim.onboard.domain.Approval.OperationType;
 import com.github.sharifrahim.onboard.domain.Company;
 import com.github.sharifrahim.onboard.dto.CompanyProfileRequest;
 import com.github.sharifrahim.onboard.dto.ContactInfoRequest;
 import com.github.sharifrahim.onboard.dto.OperationalInfoRequest;
 import com.github.sharifrahim.onboard.repository.CompanyRepository;
+import com.github.sharifrahim.onboard.service.ApprovalService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,6 +33,8 @@ import lombok.RequiredArgsConstructor;
 public class CompanyController {
 
     private final CompanyRepository companyRepository;
+    private final ApprovalService approvalService;
+    private final ObjectMapper objectMapper;
 
     @PostMapping("/profile")
     public ResponseEntity<Long> createCompany(@Valid @RequestBody CompanyProfileRequest request) {
@@ -34,7 +43,10 @@ public class CompanyController {
                 .dateOfIncorporation(request.getDateOfIncorporation()).registeredAddress(request.getRegisteredAddress())
                 .operatingAddress(request.getOperatingAddress()).country(request.getCountry())
                 .companySize(request.getCompanySize()).description(request.getDescription()).build();
-        Company saved = companyRepository.save(company);
+        Approval approval = Approval.builder().dataType("COMPANY").operationType(OperationType.NEW)
+                .submittedBy("system").submittedAt(LocalDateTime.now()).approvalStatus(ApprovalStatus.PENDING)
+                .newData(toJson(company)).build();
+        Approval saved = approvalService.save(approval);
         return new ResponseEntity<>(saved.getId(), HttpStatus.CREATED);
     }
 
@@ -46,17 +58,27 @@ public class CompanyController {
             return ResponseEntity.notFound().build();
         }
         Company company = optional.get();
-        company.setMainContactName(request.getMainContactName());
-        company.setMainContactEmail(request.getMainContactEmail());
-        company.setMainContactPhone(request.getMainContactPhone());
-        company.setContactPersonRole(request.getContactPersonRole());
-        company.setSecondaryContactName(request.getSecondaryContactName());
-        company.setTechnicalContactEmail(request.getTechnicalContactEmail());
-        company.setBillingContactEmail(request.getBillingContactEmail());
-        company.setAuthorizedPersons(request.getAuthorizedPersons());
-        company.setEmergencyContactNumber(request.getEmergencyContactNumber());
-        company.setPreferredLanguage(request.getPreferredLanguage());
-        companyRepository.save(company);
+        Company updated = Company.builder().id(company.getId()).name(company.getName())
+                .registrationNumber(company.getRegistrationNumber()).entityType(company.getEntityType())
+                .industrySector(company.getIndustrySector()).dateOfIncorporation(company.getDateOfIncorporation())
+                .registeredAddress(company.getRegisteredAddress()).operatingAddress(company.getOperatingAddress())
+                .country(company.getCountry()).companySize(company.getCompanySize())
+                .description(company.getDescription()).build();
+        updated.setMainContactName(request.getMainContactName());
+        updated.setMainContactEmail(request.getMainContactEmail());
+        updated.setMainContactPhone(request.getMainContactPhone());
+        updated.setContactPersonRole(request.getContactPersonRole());
+        updated.setSecondaryContactName(request.getSecondaryContactName());
+        updated.setTechnicalContactEmail(request.getTechnicalContactEmail());
+        updated.setBillingContactEmail(request.getBillingContactEmail());
+        updated.setAuthorizedPersons(request.getAuthorizedPersons());
+        updated.setEmergencyContactNumber(request.getEmergencyContactNumber());
+        updated.setPreferredLanguage(request.getPreferredLanguage());
+
+        Approval approval = Approval.builder().dataType("COMPANY").dataId(company.getId())
+                .operationType(OperationType.UPDATE).submittedBy("system").submittedAt(LocalDateTime.now())
+                .approvalStatus(ApprovalStatus.PENDING).newData(toJson(updated)).oldData(toJson(company)).build();
+        approvalService.save(approval);
         return ResponseEntity.ok().build();
     }
 
@@ -68,17 +90,42 @@ public class CompanyController {
             return ResponseEntity.notFound().build();
         }
         Company company = optional.get();
-        company.setTaxIdNumber(request.getTaxIdNumber());
-        company.setBankName(request.getBankName());
-        company.setBankAccountNumber(request.getBankAccountNumber());
-        company.setPreferredPaymentMethod(request.getPreferredPaymentMethod());
-        company.setRoleOnPlatform(request.getRoleOnPlatform());
-        company.setRequestedFeatures(request.getRequestedFeatures());
-        company.setOperatingHours(request.getOperatingHours());
-        company.setHasComplianceCertification(request.getHasComplianceCertification());
-        company.setAgreedToTermsOfService(request.getAgreedToTermsOfService());
-        company.setAgreedOnboardingDate(request.getAgreedOnboardingDate());
-        companyRepository.save(company);
+        Company updated = Company.builder().id(company.getId()).name(company.getName())
+                .registrationNumber(company.getRegistrationNumber()).entityType(company.getEntityType())
+                .industrySector(company.getIndustrySector()).dateOfIncorporation(company.getDateOfIncorporation())
+                .registeredAddress(company.getRegisteredAddress()).operatingAddress(company.getOperatingAddress())
+                .country(company.getCountry()).companySize(company.getCompanySize())
+                .description(company.getDescription()).mainContactName(company.getMainContactName())
+                .mainContactEmail(company.getMainContactEmail()).mainContactPhone(company.getMainContactPhone())
+                .contactPersonRole(company.getContactPersonRole())
+                .secondaryContactName(company.getSecondaryContactName())
+                .technicalContactEmail(company.getTechnicalContactEmail())
+                .billingContactEmail(company.getBillingContactEmail()).authorizedPersons(company.getAuthorizedPersons())
+                .emergencyContactNumber(company.getEmergencyContactNumber())
+                .preferredLanguage(company.getPreferredLanguage()).build();
+        updated.setTaxIdNumber(request.getTaxIdNumber());
+        updated.setBankName(request.getBankName());
+        updated.setBankAccountNumber(request.getBankAccountNumber());
+        updated.setPreferredPaymentMethod(request.getPreferredPaymentMethod());
+        updated.setRoleOnPlatform(request.getRoleOnPlatform());
+        updated.setRequestedFeatures(request.getRequestedFeatures());
+        updated.setOperatingHours(request.getOperatingHours());
+        updated.setHasComplianceCertification(request.getHasComplianceCertification());
+        updated.setAgreedToTermsOfService(request.getAgreedToTermsOfService());
+        updated.setAgreedOnboardingDate(request.getAgreedOnboardingDate());
+
+        Approval approval = Approval.builder().dataType("COMPANY").dataId(company.getId())
+                .operationType(OperationType.UPDATE).submittedBy("system").submittedAt(LocalDateTime.now())
+                .approvalStatus(ApprovalStatus.PENDING).newData(toJson(updated)).oldData(toJson(company)).build();
+        approvalService.save(approval);
         return ResponseEntity.ok().build();
+    }
+
+    private String toJson(Object object) {
+        try {
+            return objectMapper.writeValueAsString(object);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize object", e);
+        }
     }
 }
