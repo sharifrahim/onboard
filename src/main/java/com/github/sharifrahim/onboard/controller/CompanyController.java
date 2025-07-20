@@ -19,6 +19,7 @@ import com.github.sharifrahim.onboard.domain.Approval;
 import com.github.sharifrahim.onboard.domain.Approval.ApprovalStatus;
 import com.github.sharifrahim.onboard.domain.Approval.OperationType;
 import com.github.sharifrahim.onboard.domain.Company;
+import com.github.sharifrahim.onboard.domain.ProgressState;
 import com.github.sharifrahim.onboard.dto.CompanyProfileRequest;
 import com.github.sharifrahim.onboard.dto.ContactInfoRequest;
 import com.github.sharifrahim.onboard.dto.OperationalInfoRequest;
@@ -42,7 +43,8 @@ public class CompanyController {
                 .entityType(request.getEntityType()).industrySector(request.getIndustrySector())
                 .dateOfIncorporation(request.getDateOfIncorporation()).registeredAddress(request.getRegisteredAddress())
                 .operatingAddress(request.getOperatingAddress()).country(request.getCountry())
-                .companySize(request.getCompanySize()).description(request.getDescription()).build();
+                .progressState(ProgressState.PROFILE).companySize(request.getCompanySize())
+                .description(request.getDescription()).build();
         Approval approval = Approval.builder().dataType("COMPANY").operationType(OperationType.NEW)
                 .submittedBy("system").submittedAt(LocalDateTime.now()).approvalStatus(ApprovalStatus.PENDING)
                 .newData(toJson(company)).build();
@@ -62,8 +64,8 @@ public class CompanyController {
                 .registrationNumber(company.getRegistrationNumber()).entityType(company.getEntityType())
                 .industrySector(company.getIndustrySector()).dateOfIncorporation(company.getDateOfIncorporation())
                 .registeredAddress(company.getRegisteredAddress()).operatingAddress(company.getOperatingAddress())
-                .country(company.getCountry()).companySize(company.getCompanySize())
-                .description(company.getDescription()).build();
+                .country(company.getCountry()).progressState(company.getProgressState())
+                .companySize(company.getCompanySize()).description(company.getDescription()).build();
         updated.setMainContactName(request.getMainContactName());
         updated.setMainContactEmail(request.getMainContactEmail());
         updated.setMainContactPhone(request.getMainContactPhone());
@@ -94,10 +96,10 @@ public class CompanyController {
                 .registrationNumber(company.getRegistrationNumber()).entityType(company.getEntityType())
                 .industrySector(company.getIndustrySector()).dateOfIncorporation(company.getDateOfIncorporation())
                 .registeredAddress(company.getRegisteredAddress()).operatingAddress(company.getOperatingAddress())
-                .country(company.getCountry()).companySize(company.getCompanySize())
-                .description(company.getDescription()).mainContactName(company.getMainContactName())
-                .mainContactEmail(company.getMainContactEmail()).mainContactPhone(company.getMainContactPhone())
-                .contactPersonRole(company.getContactPersonRole())
+                .country(company.getCountry()).progressState(company.getProgressState())
+                .companySize(company.getCompanySize()).description(company.getDescription())
+                .mainContactName(company.getMainContactName()).mainContactEmail(company.getMainContactEmail())
+                .mainContactPhone(company.getMainContactPhone()).contactPersonRole(company.getContactPersonRole())
                 .secondaryContactName(company.getSecondaryContactName())
                 .technicalContactEmail(company.getTechnicalContactEmail())
                 .billingContactEmail(company.getBillingContactEmail()).authorizedPersons(company.getAuthorizedPersons())
@@ -121,11 +123,30 @@ public class CompanyController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/approvals/{id}/restore")
+    public ResponseEntity<Company> restoreFromApproval(@PathVariable Long id) {
+        Optional<Approval> optional = approvalService.findById(id);
+        if (optional.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        Approval approval = optional.get();
+        Company company = fromJson(approval.getNewData());
+        return ResponseEntity.ok(company);
+    }
+
     private String toJson(Object object) {
         try {
             return objectMapper.writeValueAsString(object);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to serialize object", e);
+        }
+    }
+
+    private Company fromJson(String json) {
+        try {
+            return objectMapper.readValue(json, Company.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to parse json", e);
         }
     }
 }
