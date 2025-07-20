@@ -7,7 +7,11 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 import java.time.LocalDate;
+
+import com.github.sharifrahim.onboard.domain.ProgressState;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -41,6 +45,9 @@ public class Company {
     private String operatingAddress;
 
     private String country;
+
+    @Enumerated(EnumType.STRING)
+    private ProgressState progressState;
 
     private String companySize;
 
