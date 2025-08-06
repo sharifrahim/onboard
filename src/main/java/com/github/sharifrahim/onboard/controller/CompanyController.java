@@ -19,12 +19,14 @@ import com.github.sharifrahim.onboard.domain.Approval;
 import com.github.sharifrahim.onboard.domain.Approval.ApprovalStatus;
 import com.github.sharifrahim.onboard.domain.Approval.OperationType;
 import com.github.sharifrahim.onboard.domain.Company;
-import com.github.sharifrahim.onboard.domain.ProgressState;
 import com.github.sharifrahim.onboard.dto.CompanyProfileRequest;
 import com.github.sharifrahim.onboard.dto.ContactInfoRequest;
 import com.github.sharifrahim.onboard.dto.OperationalInfoRequest;
 import com.github.sharifrahim.onboard.repository.CompanyRepository;
 import com.github.sharifrahim.onboard.service.ApprovalService;
+import com.github.sharifrahim.onboard.statemachine.OnboardingEvent;
+import com.github.sharifrahim.onboard.statemachine.service.OnboardingStateMachineService;
+import com.github.sharifrahim.onboard.exception.ValidationException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -36,91 +38,50 @@ public class CompanyController {
     private final CompanyRepository companyRepository;
     private final ApprovalService approvalService;
     private final ObjectMapper objectMapper;
+    private final OnboardingStateMachineService stateMachineService;
 
     @PostMapping("/profile")
     public ResponseEntity<Long> createCompany(@Valid @RequestBody CompanyProfileRequest request) {
-        Company company = Company.builder().name(request.getName()).registrationNumber(request.getRegistrationNumber())
-                .entityType(request.getEntityType()).industrySector(request.getIndustrySector())
-                .dateOfIncorporation(request.getDateOfIncorporation()).registeredAddress(request.getRegisteredAddress())
-                .operatingAddress(request.getOperatingAddress()).country(request.getCountry())
-                .progressState(ProgressState.PROFILE).companySize(request.getCompanySize())
-                .description(request.getDescription()).build();
-        Approval approval = Approval.builder().dataType("COMPANY").operationType(OperationType.NEW)
-                .submittedBy("system").submittedAt(LocalDateTime.now()).approvalStatus(ApprovalStatus.PENDING)
-                .newData(toJson(company)).build();
-        Approval saved = approvalService.save(approval);
-        return new ResponseEntity<>(saved.getId(), HttpStatus.CREATED);
+        try {
+            Long approvalId = stateMachineService.submitEvent(OnboardingEvent.CREATE_COMPANY, request, null);
+            return new ResponseEntity<>(approvalId, HttpStatus.CREATED);
+        } catch (ValidationException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PutMapping("/{id}/contact")
-    public ResponseEntity<Void> updateContactInfo(@PathVariable Long id,
+    public ResponseEntity<Long> updateContactInfo(@PathVariable Long id,
             @Valid @RequestBody ContactInfoRequest request) {
         Optional<Company> optional = companyRepository.findById(id);
         if (optional.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        Company company = optional.get();
-        Company updated = Company.builder().id(company.getId()).name(company.getName())
-                .registrationNumber(company.getRegistrationNumber()).entityType(company.getEntityType())
-                .industrySector(company.getIndustrySector()).dateOfIncorporation(company.getDateOfIncorporation())
-                .registeredAddress(company.getRegisteredAddress()).operatingAddress(company.getOperatingAddress())
-                .country(company.getCountry()).progressState(company.getProgressState())
-                .companySize(company.getCompanySize()).description(company.getDescription()).build();
-        updated.setMainContactName(request.getMainContactName());
-        updated.setMainContactEmail(request.getMainContactEmail());
-        updated.setMainContactPhone(request.getMainContactPhone());
-        updated.setContactPersonRole(request.getContactPersonRole());
-        updated.setSecondaryContactName(request.getSecondaryContactName());
-        updated.setTechnicalContactEmail(request.getTechnicalContactEmail());
-        updated.setBillingContactEmail(request.getBillingContactEmail());
-        updated.setAuthorizedPersons(request.getAuthorizedPersons());
-        updated.setEmergencyContactNumber(request.getEmergencyContactNumber());
-        updated.setPreferredLanguage(request.getPreferredLanguage());
 
-        Approval approval = Approval.builder().dataType("COMPANY").dataId(company.getId())
-                .operationType(OperationType.UPDATE).submittedBy("system").submittedAt(LocalDateTime.now())
-                .approvalStatus(ApprovalStatus.PENDING).newData(toJson(updated)).oldData(toJson(company)).build();
-        approvalService.save(approval);
-        return ResponseEntity.ok().build();
+        try {
+            Long approvalId = stateMachineService.submitEvent(OnboardingEvent.UPDATE_CONTACT_INFO, request,
+                    optional.get());
+            return ResponseEntity.ok(approvalId);
+        } catch (ValidationException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PutMapping("/{id}/operations")
-    public ResponseEntity<Void> updateOperationalInfo(@PathVariable Long id,
+    public ResponseEntity<Long> updateOperationalInfo(@PathVariable Long id,
             @Valid @RequestBody OperationalInfoRequest request) {
         Optional<Company> optional = companyRepository.findById(id);
         if (optional.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        Company company = optional.get();
-        Company updated = Company.builder().id(company.getId()).name(company.getName())
-                .registrationNumber(company.getRegistrationNumber()).entityType(company.getEntityType())
-                .industrySector(company.getIndustrySector()).dateOfIncorporation(company.getDateOfIncorporation())
-                .registeredAddress(company.getRegisteredAddress()).operatingAddress(company.getOperatingAddress())
-                .country(company.getCountry()).progressState(company.getProgressState())
-                .companySize(company.getCompanySize()).description(company.getDescription())
-                .mainContactName(company.getMainContactName()).mainContactEmail(company.getMainContactEmail())
-                .mainContactPhone(company.getMainContactPhone()).contactPersonRole(company.getContactPersonRole())
-                .secondaryContactName(company.getSecondaryContactName())
-                .technicalContactEmail(company.getTechnicalContactEmail())
-                .billingContactEmail(company.getBillingContactEmail()).authorizedPersons(company.getAuthorizedPersons())
-                .emergencyContactNumber(company.getEmergencyContactNumber())
-                .preferredLanguage(company.getPreferredLanguage()).build();
-        updated.setTaxIdNumber(request.getTaxIdNumber());
-        updated.setBankName(request.getBankName());
-        updated.setBankAccountNumber(request.getBankAccountNumber());
-        updated.setPreferredPaymentMethod(request.getPreferredPaymentMethod());
-        updated.setRoleOnPlatform(request.getRoleOnPlatform());
-        updated.setRequestedFeatures(request.getRequestedFeatures());
-        updated.setOperatingHours(request.getOperatingHours());
-        updated.setHasComplianceCertification(request.getHasComplianceCertification());
-        updated.setAgreedToTermsOfService(request.getAgreedToTermsOfService());
-        updated.setAgreedOnboardingDate(request.getAgreedOnboardingDate());
 
-        Approval approval = Approval.builder().dataType("COMPANY").dataId(company.getId())
-                .operationType(OperationType.UPDATE).submittedBy("system").submittedAt(LocalDateTime.now())
-                .approvalStatus(ApprovalStatus.PENDING).newData(toJson(updated)).oldData(toJson(company)).build();
-        approvalService.save(approval);
-        return ResponseEntity.ok().build();
+        try {
+            Long approvalId = stateMachineService.submitEvent(OnboardingEvent.UPDATE_OPERATIONAL_INFO, request,
+                    optional.get());
+            return ResponseEntity.ok(approvalId);
+        } catch (ValidationException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PostMapping("/approvals/{id}/restore")
@@ -157,14 +118,6 @@ public class CompanyController {
         approvalService.save(approval);
 
         return ResponseEntity.ok().build();
-    }
-
-    private String toJson(Object object) {
-        try {
-            return objectMapper.writeValueAsString(object);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize object", e);
-        }
     }
 
     private Company fromJson(String json) {
