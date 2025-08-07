@@ -58,9 +58,9 @@ public class CreateCompanyStateMachineStrategy implements OnboardingStateMachine
                 .description(request.getDescription()).build();
 
         // Create approval record
-        Approval approval = Approval.builder().dataType("COMPANY").operationType(OperationType.NEW)
-                .submittedBy("system").submittedAt(LocalDateTime.now()).approvalStatus(ApprovalStatus.PENDING)
-                .newData(toJson(company)).build();
+        Approval approval = Approval.builder().dataType("COMPANY").type(Approval.Type.CREATE_COMPANY)
+                .operationType(OperationType.NEW).submittedBy("system").submittedAt(LocalDateTime.now())
+                .approvalStatus(ApprovalStatus.PENDING).newData(toJson(company)).build();
 
         Approval saved = approvalService.save(approval);
 

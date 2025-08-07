@@ -78,9 +78,10 @@ public class UpdateOperationalInfoStateMachineStrategy implements OnboardingStat
         updated.setAgreedOnboardingDate(request.getAgreedOnboardingDate());
 
         // Create approval record
-        Approval approval = Approval.builder().dataType("COMPANY").dataId(company.getId())
-                .operationType(OperationType.UPDATE).submittedBy("system").submittedAt(LocalDateTime.now())
-                .approvalStatus(ApprovalStatus.PENDING).newData(toJson(updated)).oldData(toJson(company)).build();
+        Approval approval = Approval.builder().dataType("COMPANY").type(Approval.Type.CREATE_COMPANY)
+                .dataId(company.getId()).operationType(OperationType.UPDATE).submittedBy("system")
+                .submittedAt(LocalDateTime.now()).approvalStatus(ApprovalStatus.PENDING).newData(toJson(updated))
+                .oldData(toJson(company)).build();
 
         Approval saved = approvalService.save(approval);
 

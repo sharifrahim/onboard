@@ -32,6 +32,9 @@ public class Approval {
     private Long dataId;
 
     @Enumerated(EnumType.STRING)
+    private Type type;
+
+    @Enumerated(EnumType.STRING)
     private OperationType operationType;
 
     private String submittedBy;
@@ -54,6 +57,10 @@ public class Approval {
     private String changeSummary;
 
     private String remarks;
+
+    public enum Type {
+        CREATE_COMPANY
+    }
 
     public enum OperationType {
         NEW, UPDATE

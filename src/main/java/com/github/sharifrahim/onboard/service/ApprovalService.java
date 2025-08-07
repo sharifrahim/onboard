@@ -27,4 +27,12 @@ public class ApprovalService {
     public List<Approval> findAll() {
         return approvalRepository.findAll();
     }
+
+    public List<Approval> findByType(Approval.Type type) {
+        return approvalRepository.findByType(type);
+    }
+
+    public List<Approval> findByTypeAndStatus(Approval.Type type, Approval.ApprovalStatus status) {
+        return approvalRepository.findByTypeAndApprovalStatus(type, status);
+    }
 }
