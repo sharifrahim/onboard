@@ -1,10 +1,10 @@
 # Company Onboarding System
 
-A Spring Boot application that manages company onboarding workflow using **Spring State Machine** with a **Registry Pattern** for strategy-based validation and execution.
+A Spring Boot application that manages company onboarding workflow using **Spring State Machine** with a **Registry Pattern** for strategy-based validation and execution, plus a **Type-Based Approval System** for processing different approval workflows.
 
 ## 🚀 Overview
 
-This application provides a robust onboarding system for companies with multi-step approval processes. It leverages Spring State Machine for workflow management and implements a flexible strategy pattern for handling different onboarding steps.
+This application provides a robust onboarding system for companies with multi-step approval processes. It leverages Spring State Machine for workflow management, implements a flexible strategy pattern for handling different onboarding steps, and features an extensible approval processing system with type-based routing.
 
 ## 🏗️ Architecture
 
@@ -12,8 +12,9 @@ This application provides a robust onboarding system for companies with multi-st
 
 - **Spring State Machine**: Manages onboarding workflow states and transitions
 - **Strategy Registry Pattern**: Flexible strategy selection and execution
-- **Approval System**: Tracks all onboarding changes for approval workflow
-- **REST API**: RESTful endpoints for onboarding operations
+- **Type-Based Approval System**: Extensible approval processing with processor registry
+- **Common Status Service**: Centralized approval status management
+- **REST API**: RESTful endpoints for onboarding and approval operations
 
 ### State Machine Flow
 
@@ -22,6 +23,8 @@ PROFILE → CONTACT → OPERATIONS → COMPLETED
     ↓        ↓          ↓
 [CREATE]  [UPDATE]   [UPDATE]
 COMPANY   CONTACT   OPERATIONS
+    ↓        ↓          ↓
+ [APPROVAL PROCESSING - CREATE_COMPANY TYPE]
 ```
 
 ## 🎯 Features
@@ -37,7 +40,11 @@ COMPANY   CONTACT   OPERATIONS
 - **Priority Support**: Multiple strategies with priority ordering
 - **Easy Extension**: Add new strategies without code changes
 
-### ✅ **Approval Workflow**
+### ✅ **Approval System**
+- **Type-Based Processing**: Approval processors routed by approval type
+- **Registry Pattern**: Dynamic processor selection at runtime
+- **Common Status Service**: Centralized approval status operations
+- **Extensible Design**: Easy addition of new approval types and processors
 - **Change Tracking**: All modifications recorded for approval
 - **Audit Trail**: Complete history of onboarding changes
 - **Rollback Support**: Restore from approved states
@@ -60,7 +67,7 @@ src/main/java/com/github/sharifrahim/onboard/
 ├── controller/
 │   └── CompanyController.java           # REST endpoints
 ├── domain/
-│   ├── Approval.java                    # Approval entity
+│   ├── Approval.java                    # Approval entity with Type enum
 │   ├── Company.java                     # Company entity
 │   └── ProgressState.java               # State enumeration
 ├── dto/
@@ -71,7 +78,13 @@ src/main/java/com/github/sharifrahim/onboard/
 │   ├── ApprovalRepository.java          # Approval data access
 │   └── CompanyRepository.java           # Company data access
 ├── service/
-│   └── ApprovalService.java             # Approval business logic
+│   ├── ApprovalService.java             # Approval business logic
+│   └── approval/
+│       ├── ApprovalProcessor.java       # Approval processor interface
+│       ├── ApprovalProcessorRegistry.java # Registry for approval processors
+│       ├── ApprovalStatusService.java   # Common approval status operations
+│       └── impl/
+│           └── CreateCompanyApprovalProcessor.java # CREATE_COMPANY processor
 └── statemachine/
     ├── config/
     │   └── OnboardingStateMachineConfig.java    # State machine configuration
@@ -170,10 +183,22 @@ Content-Type: application/json
 ### Approval Management
 
 ```http
+# Get approvals by type
+GET /companies/approvals?type=CREATE_COMPANY
+```
+
+```http
+# Approve an approval request
 POST /companies/approvals/{id}/approve
 ```
 
 ```http
+# Reject an approval request with reason
+POST /companies/approvals/{id}/reject?reason=Invalid%20information
+```
+
+```http
+# Restore company data from approval
 POST /companies/approvals/{id}/restore
 ```
 
@@ -222,6 +247,57 @@ public class CustomValidationStrategy implements OnboardingStateMachineStrategy 
 - **Business Rules**: Complex selection logic based on state/event/context
 - **Easy Testing**: Mock strategies for unit tests
 
+## 🔧 Approval Processor Pattern
+
+### Creating Custom Approval Processors
+
+```java
+@Component
+public class CustomApprovalProcessor implements ApprovalProcessor {
+    
+    private final CustomRepository repository;
+    private final ApprovalStatusService approvalStatusService;
+    
+    @Override
+    public Approval approve(Approval approval) {
+        // Process the approval logic
+        processCustomLogic(approval);
+        
+        // Use common service to update status
+        return approvalStatusService.markAsApproved(approval);
+    }
+    
+    @Override
+    public Approval reject(Approval approval, String reason) {
+        // Use common service to update status
+        return approvalStatusService.markAsRejected(approval, reason);
+    }
+    
+    @Override
+    public Approval.Type getType() {
+        return Approval.Type.CUSTOM_TYPE;
+    }
+    
+    @Override
+    public boolean canHandle(Approval.Type type) {
+        return getType().equals(type);
+    }
+}
+```
+
+### Approval Types
+
+Currently supported approval types:
+- `CREATE_COMPANY` - Complete company onboarding approval
+
+### Processor Registry Benefits
+
+- **Type-Safe Routing**: Processors automatically selected by approval type
+- **Centralized Status Management**: Common service for approval status updates
+- **Easy Extension**: Add new processors without modifying existing code
+- **Separation of Concerns**: Business logic separated from status management
+- **Consistent Behavior**: Standardized approval/rejection handling
+
 ## 🗄️ Database Schema
 
 ### Companies Table
@@ -238,15 +314,19 @@ CREATE TABLE companies (
 
 ### Approvals Table  
 ```sql
-CREATE TABLE approvals (
+CREATE TABLE approval_table (
     id BIGINT PRIMARY KEY,
     data_id BIGINT,
     data_type VARCHAR(50),
+    type VARCHAR(50) NOT NULL,        -- NEW: Approval type (CREATE_COMPANY, etc.)
     operation_type VARCHAR(20),
-    old_data TEXT,
-    new_data TEXT,
+    old_data JSONB,
+    new_data JSONB,
     approval_status VARCHAR(20),
     submitted_at TIMESTAMP,
+    approved_by VARCHAR(100),
+    approved_at TIMESTAMP,
+    remarks TEXT,
     -- ... additional fields
 );
 ```
@@ -294,4 +374,4 @@ For questions and support, please open an issue in the GitHub repository.
 
 ---
 
-**Built with ❤️ using Spring Boot and Spring State Machine**
+**Built with ❤️ using Spring Boot, Spring State Machine, and Registry Pattern Architecture**
